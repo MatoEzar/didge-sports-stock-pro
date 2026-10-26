@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cash & Bank | Didge Sports Stock Pro</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Didge Sports</h2>
+      <p>Stock Pro</p>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" data-page="dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+      <a href="products.html" data-page="products" class="nav-item"><span>📦</span> Products</a>
+      <a href="import.html" data-page="import" class="nav-item"><span>📥</span> Import</a>
+      <a href="stock.html" data-page="stock" class="nav-item"><span>🔄</span> Stock</a>
+      <a href="sales.html" data-page="sales" class="nav-item"><span>🛒</span> Sales</a>
+      <a href="suppliers.html" data-page="suppliers" class="nav-item"><span>🚚</span> Suppliers</a>
+      <a href="cash.html" data-page="cash" class="nav-item active"><span>💰</span> Cash & Bank</a>
+      <a href="expenses.html" data-page="expenses" class="nav-item"><span>📉</span> Expenses</a>
+      <a href="staff.html" data-page="staff" class="nav-item"><span>👤</span> Staff</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button id="logoutBtn" class="btn-logout">Logout</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div>
+        <h1>Cash & Bank</h1>
+        <p id="welcomeRole" style="font-size:13px; color:#666;"></p>
+      </div>
+      <div class="user-info"><span id="userEmail">Loading...</span></div>
+    </header>
+
+    <section class="page-content">
+      <div class="actions-bar">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-primary" id="addAccountBtn">+ Add account</button>
+          <button class="btn-secondary" id="transferBtn">Transfer</button>
+          <button class="btn-secondary" id="adjustBtn">Adjust balance</button>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="accountCards"></div>
+      <p id="mixedNote" class="empty-state" style="display:none; text-align:left; padding:16px 0;"></p>
+
+      <div class="table-card" style="margin-top:10px;">
+        <div class="actions-bar" style="padding:15px 16px 0; margin-bottom:10px;">
+          <h3 style="color:#1e3c72;">Statement</h3>
+          <select id="filterAccount" style="padding:10px 12px; border:1px solid #ddd; border-radius:8px;">
+            <option value="">All accounts</option>
+          </select>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Account</th>
+              <th>Type</th>
+              <th>Details</th>
+              <th>In</th>
+              <th>Out</th>
+              <th>By</th>
+            </tr>
+          </thead>
+          <tbody id="statementBody"></tbody>
+        </table>
+        <p id="noRows" class="empty-state" style="display:none;">No movements yet.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="accountModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add account</h2>
+        <button class="close-btn" data-close="accountModal">&times;</button>
+      </div>
+      <form id="accountForm">
+        <div class="form-group">
+          <label>Name *</label>
+          <input type="text" id="accountName" placeholder="e.g. Equity Bank" required>
+        </div>
+        <div class="form-group">
+          <label>Type *</label>
+          <select id="accountType" required>
+            <option value="Cash">Cash</option>
+            <option value="Till">Till</option>
+            <option value="Bank">Bank</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Opening balance (KES)</label>
+          <input type="number" id="openingBalance" min="0" step="0.01" value="0">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" data-close="accountModal">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="transferModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Transfer</h2>
+        <button class="close-btn" data-close="transferModal">&times;</button>
+      </div>
+      <form id="transferForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>From *</label>
+            <select id="fromAccount" required></select>
+          </div>
+          <div class="form-group">
+            <label>To *</label>
+            <select id="toAccount" required></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Amount (KES) *</label>
+          <input type="number" id="transferAmount" min="1" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label>Note</label>
+          <input type="text" id="transferNote">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" data-close="transferModal">Cancel</button>
+          <button type="submit" class="btn-primary">Save transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="adjustModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Adjust balance</h2>
+        <button class="close-btn" data-close="adjustModal">&times;</button>
+      </div>
+      <form id="adjustForm">
+        <div class="form-group">
+          <label>Account *</label>
+          <select id="adjustAccount" required></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Direction *</label>
+            <select id="adjustDir">
+              <option value="in">Add money</option>
+              <option value="out">Remove money</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount (KES) *</label>
+            <input type="number" id="adjustAmount" min="1" step="0.01" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Reason *</label>
+          <input type="text" id="adjustReason" required placeholder="Opening cash, correction, owner deposit">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" data-close="adjustModal">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "../js/firebase-config.js";
+    import { signOut } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+    import {
+      collection, getDocs, addDoc, doc, deleteDoc, query, orderBy, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+    import { guard } from "../js/roles.js";
+
+    let currentUser = null;
+    let accounts = [];
+    let sales = [];
+    let supplierPayments = [];
+    let expenses = [];
+    let transfers = [];
+    let adjustments = [];
+
+    const money = (n) => "KES " + Number(n || 0).toLocaleString();
+
+    const session = await guard("cash");
+    currentUser = session.user;
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "../index.html";
+    });
+    document.getElementById("menuToggle").addEventListener("click", () => {
+      document.getElementById("sidebar").classList.toggle("open");
+    });
+    document.querySelectorAll("[data-close]").forEach((el) => {
+      el.addEventListener("click", () => {
+        document.getElementById(el.dataset.close).style.display = "none";
+      });
+    });
+
+    async function ensureDefaults() {
+      const snap = await getDocs(collection(db, "accounts"));
+      if (!snap.empty) return;
+      const defaults = [
+        { name: "Cash", type: "Cash" },
+        { name: "Till", type: "Till" },
+        { name: "Bank", type: "Bank" }
+      ];
+      for (const item of defaults) {
+        await addDoc(collection(db, "accounts"), {
+          ...item,
+          openingBalance: 0,
+          createdAt: serverTimestamp()
+        });
+      }
+    }
+
+    async function refresh() {
+      const [a, s, p, e, t, j] = await Promise.all([
+        getDocs(query(collection(db, "accounts"), orderBy("name"))),
+        getDocs(query(collection(db, "sales"), orderBy("createdAt", "desc"))),
+        getDocs(query(collection(db, "supplier_payments"), orderBy("createdAt", "desc"))),
+        getDocs(query(collection(db, "expenses"), orderBy("createdAt", "desc"))),
+        getDocs(query(collection(db, "transfers"), orderBy("createdAt", "desc"))),
+        getDocs(query(collection(db, "cash_adjustments"), orderBy("createdAt", "desc")))
+      ]);
+      accounts = a.docs.map((d) => ({ id: d.id, ...d.data() }));
+      sales = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+      supplierPayments = p.docs.map((d) => ({ id: d.id, ...d.data() }));
+      expenses = e.docs.map((d) => ({ id: d.id, ...d.data() }));
+      transfers = t.docs.map((d) => ({ id: d.id, ...d.data() }));
+      adjustments = j.docs.map((d) => ({ id: d.id, ...d.data() }));
+      render();
+    }
+
+    function accountByName(name) {
+      return accounts.find((a) => a.name.toLowerCase() === String(name || "").toLowerCase());
+    }
+
+    function linesFor(account) {
+      const name = account.name;
+      const rows = [];
+      sales.forEach((sale) => {
+        if (sale.paymentMethod === name) {
+          rows.push({
+            date: sale.createdAt,
+            account: name,
+            type: "Sale",
+            details: `${sale.productName || "Sale"}${sale.variant ? " (" + sale.variant + ")" : ""} × ${sale.quantity}`,
+            inn: Number(sale.total || 0),
+            out: 0,
+            by: sale.userEmail || "-"
+          });
+        }
+      });
+      supplierPayments.forEach((pay) => {
+        if (pay.method === name) {
+          rows.push({
+            date: pay.createdAt,
+            account: name,
+            type: "Supplier payment",
+            details: pay.supplierName + (pay.note ? " — " + pay.note : ""),
+            inn: 0,
+            out: Number(pay.amount || 0),
+            by: pay.userEmail || "-"
+          });
+        }
+      });
+      expenses.forEach((ex) => {
+        if (ex.accountName === name) {
+          rows.push({
+            date: ex.createdAt,
+            account: name,
+            type: "Expense",
+            details: (ex.category || "Expense") + (ex.note ? " — " + ex.note : ""),
+            inn: 0,
+            out: Number(ex.amount || 0),
+            by: ex.userEmail || "-"
+          });
+        }
+      });
+      transfers.forEach((tr) => {
+        if (tr.fromName === name) {
+          rows.push({
+            date: tr.createdAt, account: name, type: "Transfer out",
+            details: "To " + tr.toName + (tr.note ? " — " + tr.note : ""),
+            inn: 0, out: Number(tr.amount || 0), by: tr.userEmail || "-"
+          });
+        }
+        if (tr.toName === name) {
+          rows.push({
+            date: tr.createdAt, account: name, type: "Transfer in",
+            details: "From " + tr.fromName + (tr.note ? " — " + tr.note : ""),
+            inn: Number(tr.amount || 0), out: 0, by: tr.userEmail || "-"
+          });
+        }
+      });
+      adjustments.forEach((adj) => {
+        if (adj.accountName === name) {
+          const amount = Number(adj.amount || 0);
+          rows.push({
+            date: adj.createdAt, account: name, type: "Adjustment",
+            details: adj.reason || "-",
+            inn: adj.direction === "in" ? amount : 0,
+            out: adj.direction === "out" ? amount : 0,
+            by: adj.userEmail || "-"
+          });
+        }
+      });
+      return rows;
+    }
+
+    function balanceOf(account) {
+      const rows = linesFor(account);
+      const inn = rows.reduce((s, r) => s + r.inn, 0);
+      const out = rows.reduce((s, r) => s + r.out, 0);
+      return Number(account.openingBalance || 0) + inn - out;
+    }
+
+    function accountIsUsed(account) {
+      return linesFor(account).length > 0;
+    }
+
+    async function deleteAccount(id) {
+      const account = accounts.find((a) => a.id === id);
+      if (!account) return;
+      if (accountIsUsed(account)) {
+        alert(account.name + " already has movements. It cannot be deleted.");
+        return;
+      }
+      if (!confirm("Delete " + account.name + "?")) return;
+      await deleteDoc(doc(db, "accounts", id));
+      await refresh();
+    }
+
+    function fillSelects() {
+      const options = accounts.map((a) => `<option value="${a.id}">${a.name}</option>`).join("");
+      document.getElementById("fromAccount").innerHTML = options;
+      document.getElementById("toAccount").innerHTML = options;
+      document.getElementById("adjustAccount").innerHTML = options;
+      const filter = document.getElementById("filterAccount");
+      const current = filter.value;
+      filter.innerHTML = `<option value="">All accounts</option>` + accounts.map((a) => `<option value="${a.name}">${a.name}</option>`).join("");
+      filter.value = current;
+    }
+
+    function render() {
+      fillSelects();
+      const cards = document.getElementById("accountCards");
+      cards.innerHTML = "";
+      accounts.forEach((a) => {
+        const div = document.createElement("div");
+        div.className = "stat-card";
+        div.innerHTML = `
+          <h3>${a.name}</h3>
+          <p class="stat-number">${money(balanceOf(a))}</p>
+          <small>Opening ${money(a.openingBalance || 0)}</small>
+          <div style="margin-top:12px;">
+            <button class="btn-delete" data-id="${a.id}">Delete</button>
+          </div>`;
+        cards.appendChild(div);
+      });
+      cards.querySelectorAll(".btn-delete").forEach((btn) => {
+        btn.addEventListener("click", () => deleteAccount(btn.dataset.id));
+      });
+
+      const mixed = sales.filter((s) => s.paymentMethod === "Mixed").reduce((n, s) => n + Number(s.total || 0), 0);
+      const note = document.getElementById("mixedNote");
+      if (mixed > 0) {
+        note.style.display = "block";
+        note.textContent = "Mixed sales are not inside an account yet: " + money(mixed) + ". Split those sales into Cash, Till, or Bank when you can.";
+      } else {
+        note.style.display = "none";
+      }
+
+      const filter = document.getElementById("filterAccount").value;
+      let rows = [];
+      accounts.forEach((a) => {
+        if (!filter || filter === a.name) rows = rows.concat(linesFor(a));
+      });
+      rows.sort((a, b) => {
+        const da = a.date && a.date.toDate ? a.date.toDate().getTime() : 0;
+        const db = b.date && b.date.toDate ? b.date.toDate().getTime() : 0;
+        return db - da;
+      });
+
+      const body = document.getElementById("statementBody");
+      body.innerHTML = "";
+      document.getElementById("noRows").style.display = rows.length ? "none" : "block";
+      rows.forEach((r) => {
+        const date = r.date && r.date.toDate ? r.date.toDate().toLocaleString() : "-";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td>${r.account}</td>
+          <td>${r.type}</td>
+          <td>${r.details}</td>
+          <td>${r.inn ? money(r.inn) : "-"}</td>
+          <td>${r.out ? money(r.out) : "-"}</td>
+          <td>${r.by}</td>`;
+        body.appendChild(tr);
+      });
+    }
+
+    document.getElementById("filterAccount").addEventListener("change", render);
+    document.getElementById("addAccountBtn").addEventListener("click", () => {
+      document.getElementById("accountForm").reset();
+      document.getElementById("accountModal").style.display = "flex";
+    });
+    document.getElementById("transferBtn").addEventListener("click", () => {
+      document.getElementById("transferForm").reset();
+      fillSelects();
+      document.getElementById("transferModal").style.display = "flex";
+    });
+    document.getElementById("adjustBtn").addEventListener("click", () => {
+      document.getElementById("adjustForm").reset();
+      fillSelects();
+      document.getElementById("adjustModal").style.display = "flex";
+    });
+
+    document.getElementById("accountForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("accountName").value.trim();
+      if (accountByName(name)) return alert("An account with that name already exists.");
+      await addDoc(collection(db, "accounts"), {
+        name,
+        type: document.getElementById("accountType").value,
+        openingBalance: Number(document.getElementById("openingBalance").value) || 0,
+        createdAt: serverTimestamp()
+      });
+      document.getElementById("accountModal").style.display = "none";
+      await refresh();
+    });
+
+    document.getElementById("transferForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const from = accounts.find((a) => a.id === document.getElementById("fromAccount").value);
+      const to = accounts.find((a) => a.id === document.getElementById("toAccount").value);
+      const amount = Number(document.getElementById("transferAmount").value);
+      if (!from || !to || from.id === to.id) return alert("Choose two different accounts.");
+      if (balanceOf(from) < amount) return alert("Not enough money in " + from.name);
+      await addDoc(collection(db, "transfers"), {
+        fromId: from.id, fromName: from.name,
+        toId: to.id, toName: to.name,
+        amount,
+        note: document.getElementById("transferNote").value.trim() || null,
+        userEmail: currentUser.email,
+        createdAt: serverTimestamp()
+      });
+      document.getElementById("transferModal").style.display = "none";
+      await refresh();
+    });
+
+    document.getElementById("adjustForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const account = accounts.find((a) => a.id === document.getElementById("adjustAccount").value);
+      const direction = document.getElementById("adjustDir").value;
+      const amount = Number(document.getElementById("adjustAmount").value);
+      if (!account) return;
+      if (direction === "out" && balanceOf(account) < amount) return alert("Not enough money in " + account.name);
+      await addDoc(collection(db, "cash_adjustments"), {
+        accountId: account.id,
+        accountName: account.name,
+        direction,
+        amount,
+        reason: document.getElementById("adjustReason").value.trim(),
+        userEmail: currentUser.email,
+        createdAt: serverTimestamp()
+      });
+      document.getElementById("adjustModal").style.display = "none";
+      await refresh();
+    });
+
+    await ensureDefaults();
+    await refresh();
+  </script>
+</body>
+</html>

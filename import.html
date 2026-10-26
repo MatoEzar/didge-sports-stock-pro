@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Import | Didge Sports Stock Pro</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Didge Sports</h2>
+      <p>Stock Pro</p>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" data-page="dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+      <a href="products.html" data-page="products" class="nav-item"><span>📦</span> Products</a>
+      <a href="import.html" data-page="import" class="nav-item active"><span>📥</span> Import</a>
+      <a href="stock.html" data-page="stock" class="nav-item"><span>🔄</span> Stock</a>
+      <a href="sales.html" data-page="sales" class="nav-item"><span>🛒</span> Sales</a>
+      <a href="suppliers.html" data-page="suppliers" class="nav-item"><span>🚚</span> Suppliers</a>
+      <a href="cash.html" data-page="cash" class="nav-item"><span>💰</span> Cash & Bank</a>
+      <a href="expenses.html" data-page="expenses" class="nav-item"><span>📉</span> Expenses</a>
+      <a href="staff.html" data-page="staff" class="nav-item"><span>👤</span> Staff</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button id="logoutBtn" class="btn-logout">Logout</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div>
+        <h1>Import</h1>
+        <p id="welcomeRole" style="font-size:13px; color:#666;"></p>
+      </div>
+      <div class="user-info"><span id="userEmail">Loading...</span></div>
+    </header>
+
+    <section class="page-content">
+
+      <div class="table-card" style="padding:24px; margin-bottom:20px;">
+        <h2 style="color:#1e3c72; font-size:20px; margin-bottom:8px;">Products from Excel</h2>
+        <p style="margin-bottom:8px; color:#444;">One row is one product. For a stick with sizes, use one row per size and keep the same product name.</p>
+        <p style="margin-bottom:18px; color:#666; font-size:14px;">Columns: <strong>name, category, size, barcode, cost, selling, stock</strong>. Size and barcode can be blank. Excel and CSV both work.</p>
+        <div class="actions-bar" style="margin-bottom:0;">
+          <button class="btn-secondary" id="templateBtn" type="button">Download product template</button>
+          <label class="btn-primary" style="display:inline-block; text-align:center; cursor:pointer;">
+            Choose product file
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+          </label>
+        </div>
+      </div>
+
+      <div id="previewCard" class="table-card" style="display:none; padding:24px; margin-bottom:20px;">
+        <div class="actions-bar">
+          <div>
+            <h2 style="color:#1e3c72; font-size:20px;">Product preview</h2>
+            <p id="previewSummary" style="color:#666; margin-top:4px;"></p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <select id="importMode" style="padding:10px 12px; border:1px solid #ddd; border-radius:8px;">
+              <option value="update">Update existing products and add new ones</option>
+              <option value="new">Add new products only</option>
+            </select>
+            <button class="btn-primary" id="saveBtn" type="button">Save products</button>
+          </div>
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Sizes</th>
+              <th>Stock</th>
+              <th>Selling</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+        <p id="previewMore" class="empty-state" style="display:none;"></p>
+      </div>
+
+      <div id="bankSection" data-roles="admin">
+        <div class="table-card" style="padding:24px; margin-bottom:20px;">
+          <h2 style="color:#1e3c72; font-size:20px; margin-bottom:8px;">Bank statement</h2>
+          <p style="margin-bottom:8px; color:#444;">Upload the Excel or CSV you downloaded from the bank or M-Pesa. This is the bank’s record. It does not change the Cash &amp; Bank balance.</p>
+          <p style="margin-bottom:18px; color:#666; font-size:14px;">It looks for date, description, money in, and money out. Debit, credit, paid in, and withdrawn are understood.</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Account this statement belongs to</label>
+              <select id="statementAccount"></select>
+            </div>
+            <div class="form-group">
+              <label>Statement file</label>
+              <input type="file" id="statementFile" accept=".xlsx,.xls,.csv">
+            </div>
+          </div>
+          <button class="btn-secondary" id="statementTemplateBtn" type="button">Download statement template</button>
+        </div>
+
+        <div id="statementPreview" class="table-card" style="display:none; padding:24px; margin-bottom:20px;">
+          <div class="actions-bar">
+            <div>
+              <h2 style="color:#1e3c72; font-size:20px;">Statement preview</h2>
+              <p id="statementSummary" style="color:#666; margin-top:4px;"></p>
+            </div>
+            <button class="btn-primary" id="saveStatementBtn" type="button">Save statement</button>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Details</th>
+                <th>In</th>
+                <th>Out</th>
+              </tr>
+            </thead>
+            <tbody id="statementBody"></tbody>
+          </table>
+          <p id="statementMore" class="empty-state" style="display:none;"></p>
+        </div>
+
+        <div id="compareCard" class="table-card" style="display:none; padding:24px;">
+          <h2 style="color:#1e3c72; font-size:20px; margin-bottom:14px;">Compare with your records</h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <h3>Statement movement</h3>
+              <p class="stat-number" id="compareStatement">KES 0</p>
+            </div>
+            <div class="stat-card">
+              <h3>System movement</h3>
+              <p class="stat-number" id="compareSystem">KES 0</p>
+            </div>
+            <div class="stat-card">
+              <h3>Difference</h3>
+              <p class="stat-number" id="compareDiff">KES 0</p>
+              <small id="compareNote"></small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script type="module">
+    import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
+    import { auth, db } from "../js/firebase-config.js";
+    import { signOut } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+    import {
+      collection, getDocs, doc, writeBatch, serverTimestamp, query, where, Timestamp
+    } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+    import { guard } from "../js/roles.js";
+
+    let parsed = [];
+    let statementRows = [];
+    let accounts = [];
+    const session = await guard("import");
+    const currentUser = session.user;
+    const isAdmin = session.profile.role === "admin";
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "../index.html";
+    });
+    document.getElementById("menuToggle").addEventListener("click", () => {
+      document.getElementById("sidebar").classList.toggle("open");
+    });
+
+    const money = (n) => "KES " + Number(n || 0).toLocaleString();
+
+    function num(value) {
+      if (value === "" || value == null) return 0;
+      const clean = String(value).replace(/,/g, "").replace(/[^\d.-]/g, "").trim();
+      const n = Number(clean);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function cell(row, names) {
+      for (const key of Object.keys(row)) {
+        const norm = key.toLowerCase().replace(/\s+/g, " ").trim();
+        if (names.includes(norm)) return row[key];
+      }
+      return "";
+    }
+
+    function readSheet(file) {
+      return file.arrayBuffer().then((buffer) => {
+        const book = XLSX.read(buffer, { type: "array", cellDates: true });
+        const sheet = book.Sheets[book.SheetNames[0]];
+        return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
+      });
+    }
+
+    document.getElementById("templateBtn").addEventListener("click", () => {
+      downloadCsv("didge-products-template.csv", [
+        "name,category,size,barcode,cost,selling,stock",
+        "PRO ONE,Hockey Sticks,36.5,,4500,6500,4",
+        "PRO ONE,Hockey Sticks,37.5,,4500,6500,2",
+        "Mouth Guard,Accessories,,,300,800,20"
+      ]);
+    });
+
+    function downloadCsv(filename, lines) {
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
+    function buildProducts(rows) {
+      const groups = new Map();
+      rows.forEach((row) => {
+        const name = String(cell(row, ["name", "product", "product name", "item"])).trim();
+        if (!name) return;
+        const item = {
+          name,
+          category: String(cell(row, ["category", "cat"]) || "Uncategorised").trim() || "Uncategorised",
+          size: String(cell(row, ["size", "variant", "length"]) || "").trim(),
+          barcode: String(cell(row, ["barcode", "sku", "code"]) || "").trim(),
+          cost: num(cell(row, ["cost", "cost price", "unit cost"])),
+          selling: num(cell(row, ["selling", "selling price", "price", "unit price"])),
+          stock: num(cell(row, ["stock", "qty", "quantity"]))
+        };
+        const key = name.toLowerCase();
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      });
+
+      const products = [];
+      groups.forEach((items) => {
+        const sized = items.filter((item) => item.size);
+        if (sized.length) {
+          const variants = [];
+          sized.forEach((item) => {
+            const found = variants.find((v) => v.size.toLowerCase() === item.size.toLowerCase());
+            if (found) {
+              found.stock += item.stock;
+              found.cost = item.cost;
+              found.selling = item.selling;
+              if (item.barcode) found.barcode = item.barcode;
+            } else {
+              variants.push({
+                size: item.size,
+                cost: item.cost,
+                selling: item.selling,
+                stock: item.stock,
+                barcode: item.barcode || ""
+              });
+            }
+          });
+          products.push({
+            name: items[0].name,
+            category: items[0].category,
+            hasVariants: true,
+            variants,
+            totalStock: variants.reduce((sum, v) => sum + v.stock, 0)
+          });
+          return;
+        }
+        const last = items[items.length - 1];
+        products.push({
+          name: last.name,
+          category: last.category,
+          hasVariants: false,
+          cost: last.cost,
+          selling: last.selling,
+          stock: last.stock,
+          totalStock: last.stock,
+          barcode: last.barcode || ""
+        });
+      });
+      return products;
+    }
+
+    function showPreview() {
+      const body = document.getElementById("previewBody");
+      document.getElementById("previewCard").style.display = "block";
+      body.innerHTML = "";
+      parsed.slice(0, 20).forEach((product) => {
+        const sizes = product.hasVariants ? product.variants.map((v) => v.size).join(", ") : "-";
+        const selling = product.hasVariants
+          ? product.variants.map((v) => money(v.selling)).join(", ")
+          : money(product.selling);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${product.name}</strong></td>
+          <td>${product.category}</td>
+          <td>${sizes}</td>
+          <td>${product.totalStock}</td>
+          <td>${selling}</td>`;
+        body.appendChild(tr);
+      });
+      const more = document.getElementById("previewMore");
+      if (parsed.length > 20) {
+        more.style.display = "block";
+        more.textContent = "And " + (parsed.length - 20) + " more products.";
+      } else {
+        more.style.display = "none";
+      }
+      const withSizes = parsed.filter((p) => p.hasVariants).length;
+      document.getElementById("previewSummary").textContent =
+        parsed.length + " products ready. " + withSizes + " have sizes.";
+    }
+
+    document.getElementById("fileInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file) return;
+      try {
+        parsed = buildProducts(await readSheet(file));
+        if (!parsed.length) {
+          alert("No products found. The first row must contain a name column.");
+          document.getElementById("previewCard").style.display = "none";
+          return;
+        }
+        showPreview();
+      } catch (error) {
+        alert("Could not read that file. Use .xlsx or .csv. " + error.message);
+      }
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+      if (!parsed.length) return;
+      const replace = document.getElementById("importMode").value === "update";
+      const question = replace
+        ? "Update matching products and add the new ones? Stock and prices in the file will replace what is saved now."
+        : "Add only products whose names are not already in the system?";
+      if (!confirm(question)) return;
+
+      const saveBtn = document.getElementById("saveBtn");
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+      try {
+        const snap = await getDocs(collection(db, "products"));
+        const byName = new Map();
+        snap.forEach((item) => {
+          byName.set(String(item.data().name || "").trim().toLowerCase(), item.id);
+        });
+
+        let batch = writeBatch(db);
+        let pending = 0;
+        let added = 0;
+        let updated = 0;
+        let skipped = 0;
+
+        async function flush() {
+          if (!pending) return;
+          await batch.commit();
+          batch = writeBatch(db);
+          pending = 0;
+        }
+
+        for (const product of parsed) {
+          const existingId = byName.get(product.name.toLowerCase());
+          if (existingId && !replace) {
+            skipped++;
+            continue;
+          }
+          const ref = existingId ? doc(db, "products", existingId) : doc(collection(db, "products"));
+          const payload = { ...product, updatedAt: serverTimestamp() };
+          if (!existingId) payload.createdAt = serverTimestamp();
+          batch.set(ref, payload, { merge: true });
+          pending++;
+          if (existingId) updated++;
+          else added++;
+          if (pending >= 400) await flush();
+        }
+        await flush();
+        alert("Done. Added " + added + ", updated " + updated + ", skipped " + skipped + ".");
+      } catch (error) {
+        alert("Save failed: " + error.message);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save products";
+      }
+    });
+
+    function parseDate(value) {
+      if (value instanceof Date && !isNaN(value)) return value;
+      if (typeof value === "number" && value > 20000 && value < 80000) {
+        return new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+      }
+      const text = String(value || "").trim();
+      if (!text) return null;
+      const match = text.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+      if (match) {
+        let year = Number(match[3]);
+        if (year < 100) year += 2000;
+        return new Date(year, Number(match[2]) - 1, Number(match[1]), Number(match[4] || 0), Number(match[5] || 0));
+      }
+      const parsedDate = new Date(text);
+      return isNaN(parsedDate) ? null : parsedDate;
+    }
+
+    function buildStatement(rows) {
+      const lines = [];
+      rows.forEach((row) => {
+        const details = String(cell(row, [
+          "description", "narration", "details", "transaction details", "particulars", "particular", "memo", "narrative"
+        ]) || "").trim();
+        const when = parseDate(cell(row, [
+          "date", "trans date", "transaction date", "completion time", "value date", "posted date", "posting date"
+        ]));
+        let moneyIn = num(cell(row, ["credit", "paid in", "deposit", "money in", "cr", "in"]));
+        let moneyOut = num(cell(row, ["debit", "withdrawn", "withdrawal", "paid out", "money out", "dr", "out"]));
+        if (!moneyIn && !moneyOut) {
+          const amount = num(cell(row, ["amount", "value"]));
+          const kind = String(cell(row, ["type", "dr/cr", "credit/debit"]) || "").toLowerCase();
+          if (kind.includes("cr") || kind.includes("credit") || kind.includes("in")) moneyIn = Math.abs(amount);
+          else if (kind.includes("dr") || kind.includes("debit") || kind.includes("out")) moneyOut = Math.abs(amount);
+          else if (amount > 0) moneyIn = amount;
+          else if (amount < 0) moneyOut = Math.abs(amount);
+        }
+        if (/opening balance|brought forward|balance b\/f|closing balance/i.test(details)) return;
+        if (!when || (!moneyIn && !moneyOut)) return;
+        lines.push({
+          date: when,
+          details: details || "Bank line",
+          reference: String(cell(row, ["reference", "ref", "receipt", "receipt no.", "receipt no", "transaction id"]) || "").trim(),
+          moneyIn,
+          moneyOut
+        });
+      });
+      lines.sort((a, b) => a.date - b.date);
+      return lines;
+    }
+
+    function showStatement() {
+      const body = document.getElementById("statementBody");
+      document.getElementById("statementPreview").style.display = "block";
+      body.innerHTML = "";
+      statementRows.slice(0, 20).forEach((line) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${line.date.toLocaleString()}</td>
+          <td>${line.details}</td>
+          <td>${line.moneyIn ? money(line.moneyIn) : "-"}</td>
+          <td>${line.moneyOut ? money(line.moneyOut) : "-"}</td>`;
+        body.appendChild(tr);
+      });
+      const more = document.getElementById("statementMore");
+      if (statementRows.length > 20) {
+        more.style.display = "block";
+        more.textContent = "And " + (statementRows.length - 20) + " more lines.";
+      } else {
+        more.style.display = "none";
+      }
+      const inn = statementRows.reduce((sum, line) => sum + line.moneyIn, 0);
+      const out = statementRows.reduce((sum, line) => sum + line.moneyOut, 0);
+      document.getElementById("statementSummary").textContent =
+        statementRows.length + " lines. In " + money(inn) + ", out " + money(out) + ".";
+    }
+
+    async function loadAccounts() {
+      const select = document.getElementById("statementAccount");
+      if (!select) return;
+      const snap = await getDocs(query(collection(db, "accounts")));
+      accounts = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
+      accounts.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+      if (!accounts.length) {
+        select.innerHTML = `<option value="">Open Cash & Bank and add an account first</option>`;
+        return;
+      }
+      select.innerHTML = accounts.map((account) => `<option value="${account.id}">${account.name}</option>`).join("");
+      await compareSelected();
+    }
+
+    const statementTemplateBtn = document.getElementById("statementTemplateBtn");
+    if (statementTemplateBtn) {
+      statementTemplateBtn.addEventListener("click", () => {
+        downloadCsv("didge-bank-statement-template.csv", [
+          "date,description,money in,money out,reference",
+          "01/10/2026,Customer deposit,15000,0,REF001",
+          "02/10/2026,Rent payment,0,8000,REF002"
+        ]);
+      });
+    }
+
+    const statementFile = document.getElementById("statementFile");
+    if (statementFile) {
+      statementFile.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        e.target.value = "";
+        if (!file) return;
+        try {
+          statementRows = buildStatement(await readSheet(file));
+          if (!statementRows.length) {
+            alert("No statement lines found. Include a date and an amount column.");
+            document.getElementById("statementPreview").style.display = "none";
+            return;
+          }
+          showStatement();
+        } catch (error) {
+          alert("Could not read that statement. Export it from the bank as Excel or CSV. " + error.message);
+        }
+      });
+    }
+
+    const saveStatementBtn = document.getElementById("saveStatementBtn");
+    if (saveStatementBtn) {
+      saveStatementBtn.addEventListener("click", async () => {
+        const account = accounts.find((item) => item.id === document.getElementById("statementAccount").value);
+        if (!account) return alert("Choose the account this statement belongs to.");
+        if (!statementRows.length) return;
+        if (!confirm("Save this statement against " + account.name + "? Your Cash & Bank balance will not change.")) return;
+
+        saveStatementBtn.disabled = true;
+        saveStatementBtn.textContent = "Saving...";
+        try {
+          const existing = await getDocs(query(collection(db, "statement_lines"), where("accountId", "==", account.id)));
+          const seen = new Set(existing.docs.map((item) => item.data().lineKey));
+          let batch = writeBatch(db);
+          let pending = 0;
+          let added = 0;
+          let skipped = 0;
+
+          async function flush() {
+            if (!pending) return;
+            await batch.commit();
+            batch = writeBatch(db);
+            pending = 0;
+          }
+
+          for (const line of statementRows) {
+            const lineKey = [account.id, line.date.toISOString(), line.details.toLowerCase(), line.moneyIn, line.moneyOut].join("|");
+            if (seen.has(lineKey)) {
+              skipped++;
+              continue;
+            }
+            seen.add(lineKey);
+            const ref = doc(collection(db, "statement_lines"));
+            batch.set(ref, {
+              accountId: account.id,
+              accountName: account.name,
+              date: Timestamp.fromDate(line.date),
+              details: line.details,
+              reference: line.reference || null,
+              moneyIn: line.moneyIn,
+              moneyOut: line.moneyOut,
+              lineKey,
+              userEmail: currentUser.email,
+              createdAt: serverTimestamp()
+            });
+            pending++;
+            added++;
+            if (pending >= 400) await flush();
+          }
+          await flush();
+          alert("Statement saved. Added " + added + " lines, skipped " + skipped + " duplicates.");
+          await compareSelected();
+        } catch (error) {
+          alert("Save failed: " + error.message);
+        } finally {
+          saveStatementBtn.disabled = false;
+          saveStatementBtn.textContent = "Save statement";
+        }
+      });
+    }
+
+    function timeOf(value) {
+      if (!value) return 0;
+      if (value.toDate) return value.toDate().getTime();
+      if (value instanceof Date) return value.getTime();
+      return 0;
+    }
+
+    async function compareSelected() {
+      const card = document.getElementById("compareCard");
+      const account = accounts.find((item) => item.id === document.getElementById("statementAccount").value);
+      if (!card || !account) return;
+      const linesSnap = await getDocs(query(collection(db, "statement_lines"), where("accountId", "==", account.id)));
+      if (linesSnap.empty) {
+        card.style.display = "none";
+        return;
+      }
+      const lines = linesSnap.docs.map((item) => item.data());
+      const times = lines.map((line) => timeOf(line.date)).filter(Boolean);
+      const start = Math.min(...times);
+      const end = Math.max(...times);
+      const statementNet = lines.reduce((sum, line) => sum + Number(line.moneyIn || 0) - Number(line.moneyOut || 0), 0);
+
+      const [salesSnap, paySnap, expenseSnap, transferSnap, adjustSnap] = await Promise.all([
+        getDocs(collection(db, "sales")),
+        getDocs(collection(db, "supplier_payments")),
+        getDocs(collection(db, "expenses")),
+        getDocs(collection(db, "transfers")),
+        getDocs(collection(db, "cash_adjustments"))
+      ]);
+
+      let systemNet = 0;
+      const inRange = (value) => {
+        const time = timeOf(value);
+        return time >= start && time <= end;
+      };
+      salesSnap.forEach((item) => {
+        const sale = item.data();
+        if (sale.paymentMethod === account.name && inRange(sale.createdAt)) systemNet += Number(sale.total || 0);
+      });
+      paySnap.forEach((item) => {
+        const pay = item.data();
+        if (pay.method === account.name && inRange(pay.createdAt)) systemNet -= Number(pay.amount || 0);
+      });
+      expenseSnap.forEach((item) => {
+        const expense = item.data();
+        if (expense.accountName === account.name && inRange(expense.createdAt)) systemNet -= Number(expense.amount || 0);
+      });
+      transferSnap.forEach((item) => {
+        const transfer = item.data();
+        if (!inRange(transfer.createdAt)) return;
+        if (transfer.toName === account.name) systemNet += Number(transfer.amount || 0);
+        if (transfer.fromName === account.name) systemNet -= Number(transfer.amount || 0);
+      });
+      adjustSnap.forEach((item) => {
+        const adj = item.data();
+        if (adj.accountName !== account.name || !inRange(adj.createdAt)) return;
+        if (adj.direction === "in") systemNet += Number(adj.amount || 0);
+        if (adj.direction === "out") systemNet -= Number(adj.amount || 0);
+      });
+
+      const diff = statementNet - systemNet;
+      card.style.display = "block";
+      document.getElementById("compareStatement").textContent = money(statementNet);
+      document.getElementById("compareSystem").textContent = money(systemNet);
+      document.getElementById("compareDiff").textContent = money(Math.abs(diff));
+      document.getElementById("compareNote").textContent = Math.abs(diff) < 1
+        ? "They match for this period."
+        : diff > 0
+          ? "The statement has more than your system."
+          : "Your system has more than the statement.";
+    }
+
+    const statementAccount = document.getElementById("statementAccount");
+    if (statementAccount) {
+      statementAccount.addEventListener("change", compareSelected);
+      if (isAdmin) await loadAccounts();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock | Didge Sports Stock Pro</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Didge Sports</h2>
+      <p>Stock Pro</p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" data-page="dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+      <a href="products.html" data-page="products" class="nav-item"><span>📦</span> Products</a>
+      <a href="import.html" data-page="import" class="nav-item"><span>📥</span> Import</a>
+      <a href="stock.html" data-page="stock" class="nav-item active"><span>🔄</span> Stock</a>
+      <a href="sales.html" data-page="sales" class="nav-item"><span>🛒</span> Sales</a>
+      <a href="suppliers.html" data-page="suppliers" class="nav-item"><span>🚚</span> Suppliers</a>
+      <a href="cash.html" data-page="cash" class="nav-item"><span>💰</span> Cash & Bank</a>
+      <a href="expenses.html" data-page="expenses" class="nav-item"><span>📉</span> Expenses</a>
+      <a href="staff.html" data-page="staff" class="nav-item"><span>👤</span> Staff</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button id="logoutBtn" class="btn-logout">Logout</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div>
+        <h1>Stock Management</h1>
+        <p id="welcomeRole" style="font-size:13px; color:#666;"></p>
+      </div>
+      <div class="user-info">
+        <span id="userEmail">Loading...</span>
+      </div>
+    </header>
+
+    <section class="page-content">
+
+      <div class="actions-bar">
+        <div class="stock-actions">
+          <button class="btn-primary" id="stockInBtn" data-roles="admin,inventory">+ Stock In</button>
+          <button class="btn-secondary" id="stockOutBtn" data-roles="admin,inventory">− Stock Out</button>
+          <button class="btn-secondary" id="adjustBtn" data-roles="admin,inventory">± Adjust Stock</button>
+        </div>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search movements...">
+        </div>
+      </div>
+
+      <div class="table-card" style="margin-bottom: 25px;">
+        <h3 style="padding: 15px 20px 10px; color: #1e3c72;">Current Stock Levels</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Variant / Size</th>
+              <th>Current Stock</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="currentStockBody"></tbody>
+        </table>
+      </div>
+
+      <div class="table-card">
+        <h3 style="padding: 15px 20px 10px; color: #1e3c72;">Stock Movement History</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Product</th>
+              <th>Variant</th>
+              <th>Quantity</th>
+              <th>Reason / Note</th>
+              <th>By</th>
+            </tr>
+          </thead>
+          <tbody id="movementsBody"></tbody>
+        </table>
+        <p id="noMovements" class="empty-state" style="display:none;">No stock movements yet.</p>
+      </div>
+
+    </section>
+  </main>
+
+  <div class="modal" id="stockModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Stock In</h2>
+        <button class="close-btn" id="closeModal">&times;</button>
+      </div>
+
+      <form id="stockForm">
+        <div class="form-group">
+          <label>Product *</label>
+          <select id="productSelect" required>
+            <option value="">Select Product</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="variantGroup" style="display:none;">
+          <label>Size / Variant *</label>
+          <select id="variantSelect" required>
+            <option value="">Select Size</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Quantity *</label>
+          <input type="number" id="quantity" min="1" required>
+        </div>
+
+        <div class="form-group">
+          <label>Reason / Note</label>
+          <input type="text" id="reason" placeholder="e.g. Purchase from supplier, Damaged, etc.">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from '../js/firebase-config.js';
+    import { signOut } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+    import {
+      collection, getDocs, addDoc, doc, updateDoc,
+      query, orderBy, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+    import { guard } from "../js/roles.js";
+
+    let currentUser = null;
+    let allProducts = [];
+    let movementType = "in";
+
+    const session = await guard("stock");
+    currentUser = session.user;
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = "../index.html";
+    });
+
+    document.getElementById('menuToggle').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    const modal = document.getElementById('stockModal');
+    document.getElementById('closeModal').addEventListener('click', () => modal.style.display = "none");
+    document.getElementById('cancelBtn').addEventListener('click', () => modal.style.display = "none");
+
+    const stockInBtn = document.getElementById('stockInBtn');
+    const stockOutBtn = document.getElementById('stockOutBtn');
+    const adjustBtn = document.getElementById('adjustBtn');
+    if (stockInBtn) stockInBtn.addEventListener('click', () => openModal("in"));
+    if (stockOutBtn) stockOutBtn.addEventListener('click', () => openModal("out"));
+    if (adjustBtn) adjustBtn.addEventListener('click', () => openModal("adjust"));
+
+    function openModal(type) {
+      movementType = type;
+      const titles = { in: "Stock In", out: "Stock Out", adjust: "Adjust Stock" };
+      document.getElementById('modalTitle').textContent = titles[type];
+      document.getElementById('stockForm').reset();
+      document.getElementById('variantGroup').style.display = "none";
+      modal.style.display = "flex";
+    }
+
+    async function loadProductsForSelect() {
+      const snapshot = await getDocs(query(collection(db, "products"), orderBy("name")));
+      allProducts = [];
+      const select = document.getElementById('productSelect');
+      select.innerHTML = `<option value="">Select Product</option>`;
+      snapshot.forEach(docSnap => {
+        const data = { id: docSnap.id, ...docSnap.data() };
+        allProducts.push(data);
+        select.innerHTML += `<option value="${data.id}">${data.name}</option>`;
+      });
+    }
+
+    document.getElementById('productSelect').addEventListener('change', (e) => {
+      const product = allProducts.find(p => p.id === e.target.value);
+      const variantGroup = document.getElementById('variantGroup');
+      const variantSelect = document.getElementById('variantSelect');
+      if (product && product.hasVariants && product.variants) {
+        variantGroup.style.display = "block";
+        variantSelect.innerHTML = `<option value="">Select Size</option>`;
+        product.variants.forEach((v, index) => {
+          variantSelect.innerHTML += `<option value="${index}">${v.size} (Stock: ${v.stock})</option>`;
+        });
+      } else {
+        variantGroup.style.display = "none";
+      }
+    });
+
+    document.getElementById('stockForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const productId = document.getElementById('productSelect').value;
+      const product = allProducts.find(p => p.id === productId);
+      if (!product) return alert("Please select a product");
+
+      const qty = Number(document.getElementById('quantity').value);
+      const reason = document.getElementById('reason').value.trim();
+      const variantIndex = document.getElementById('variantSelect').value;
+
+      try {
+        if (product.hasVariants) {
+          const variants = [...product.variants];
+          const idx = Number(variantIndex);
+          let newStock = variants[idx].stock;
+          if (movementType === "in") newStock += qty;
+          else if (movementType === "out") newStock -= qty;
+          else newStock = qty;
+          if (newStock < 0) return alert("Stock cannot go below zero");
+          variants[idx].stock = newStock;
+          const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+          await updateDoc(doc(db, "products", productId), {
+            variants, totalStock, updatedAt: serverTimestamp()
+          });
+        } else {
+          let newStock = product.stock || 0;
+          if (movementType === "in") newStock += qty;
+          else if (movementType === "out") newStock -= qty;
+          else newStock = qty;
+          if (newStock < 0) return alert("Stock cannot go below zero");
+          await updateDoc(doc(db, "products", productId), {
+            stock: newStock, totalStock: newStock, updatedAt: serverTimestamp()
+          });
+        }
+
+        await addDoc(collection(db, "stock_movements"), {
+          type: movementType,
+          productId,
+          productName: product.name,
+          variant: product.hasVariants ? product.variants[Number(variantIndex)].size : null,
+          quantity: qty,
+          reason: reason || null,
+          userEmail: currentUser.email,
+          createdAt: serverTimestamp()
+        });
+
+        modal.style.display = "none";
+        loadCurrentStock();
+        loadMovements();
+        loadProductsForSelect();
+        alert("Stock updated successfully");
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    });
+
+    async function loadCurrentStock() {
+      const tbody = document.getElementById('currentStockBody');
+      tbody.innerHTML = "";
+      const snapshot = await getDocs(query(collection(db, "products"), orderBy("name")));
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.hasVariants && data.variants) {
+          data.variants.forEach((v, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${i === 0 ? data.name : ''}</td>
+              <td>${i === 0 ? data.category : ''}</td>
+              <td>${v.size}</td>
+              <td class="${v.stock <= 5 ? 'low-stock' : ''}">${v.stock}</td>
+              <td>${v.stock <= 5 ? '<span class="low-stock">Low</span>' : 'OK'}</td>`;
+            tbody.appendChild(tr);
+          });
+        } else {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${data.name}</td>
+            <td>${data.category}</td>
+            <td>-</td>
+            <td class="${(data.stock || 0) <= 5 ? 'low-stock' : ''}">${data.stock || 0}</td>
+            <td>${(data.stock || 0) <= 5 ? '<span class="low-stock">Low</span>' : 'OK'}</td>`;
+          tbody.appendChild(tr);
+        }
+      });
+    }
+
+    async function loadMovements() {
+      const tbody = document.getElementById('movementsBody');
+      const noMovements = document.getElementById('noMovements');
+      tbody.innerHTML = "";
+      const q = query(collection(db, "stock_movements"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) {
+        noMovements.style.display = "block";
+        return;
+      }
+      noMovements.style.display = "none";
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const date = data.createdAt ? data.createdAt.toDate().toLocaleString() : "-";
+        const typeLabel = {
+          in: '<span style="color:green">Stock In</span>',
+          out: '<span style="color:#c0392b">Stock Out</span>',
+          adjust: '<span style="color:#e67e22">Adjustment</span>'
+        };
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td>${typeLabel[data.type] || data.type}</td>
+          <td>${data.productName}</td>
+          <td>${data.variant || "-"}</td>
+          <td>${data.quantity}</td>
+          <td>${data.reason || "-"}</td>
+          <td>${data.userEmail}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      document.querySelectorAll('#movementsBody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(term) ? "" : "none";
+      });
+    });
+
+    loadCurrentStock();
+    loadMovements();
+    loadProductsForSelect();
+  </script>
+
+</body>
+</html>

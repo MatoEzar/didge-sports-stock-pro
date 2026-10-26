@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expenses | Didge Sports Stock Pro</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Didge Sports</h2>
+      <p>Stock Pro</p>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" data-page="dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+      <a href="products.html" data-page="products" class="nav-item"><span>📦</span> Products</a>
+      <a href="stock.html" data-page="stock" class="nav-item"><span>🔄</span> Stock</a>
+      <a href="sales.html" data-page="sales" class="nav-item"><span>🛒</span> Sales</a>
+      <a href="suppliers.html" data-page="suppliers" class="nav-item"><span>🚚</span> Suppliers</a>
+      <a href="cash.html" data-page="cash" class="nav-item"><span>💰</span> Cash & Bank</a>
+      <a href="expenses.html" data-page="expenses" class="nav-item active"><span>📉</span> Expenses</a>
+      <a href="staff.html" data-page="staff" class="nav-item"><span>👤</span> Staff</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button id="logoutBtn" class="btn-logout">Logout</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div>
+        <h1>Expenses</h1>
+        <p id="welcomeRole" style="font-size:13px; color:#666;"></p>
+      </div>
+      <div class="user-info"><span id="userEmail">Loading...</span></div>
+    </header>
+
+    <section class="page-content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Today</h3>
+          <p class="stat-number" id="todayTotal">KES 0</p>
+        </div>
+        <div class="stat-card">
+          <h3>This month</h3>
+          <p class="stat-number" id="monthTotal">KES 0</p>
+        </div>
+        <div class="stat-card">
+          <h3>This year</h3>
+          <p class="stat-number" id="yearTotal">KES 0</p>
+        </div>
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn-primary" id="addBtn">+ Add expense</button>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search expenses...">
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th>Paid from</th>
+              <th>Note</th>
+              <th>By</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="expensesBody"></tbody>
+        </table>
+        <p id="noExpenses" class="empty-state" style="display:none;">No expenses yet.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="expenseModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add expense</h2>
+        <button class="close-btn" data-close="expenseModal">&times;</button>
+      </div>
+      <form id="expenseForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category *</label>
+            <select id="category" required>
+              <option value="Rent">Rent</option>
+              <option value="Salaries">Salaries</option>
+              <option value="Transport">Transport</option>
+              <option value="Utilities">Utilities</option>
+              <option value="Airtime">Airtime</option>
+              <option value="Supplies">Supplies</option>
+              <option value="Repairs">Repairs</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount (KES) *</label>
+            <input type="number" id="amount" min="1" step="0.01" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Paid from *</label>
+          <select id="accountName" required></select>
+        </div>
+        <div class="form-group">
+          <label>Note</label>
+          <input type="text" id="note" placeholder="What was this for?">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" data-close="expenseModal">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "../js/firebase-config.js";
+    import { signOut } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+    import {
+      collection, getDocs, addDoc, doc, updateDoc, deleteDoc,
+      query, orderBy, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+    import { guard } from "../js/roles.js";
+
+    let currentUser = null;
+    let expenses = [];
+    let accounts = [];
+    let editingId = null;
+
+    const money = (n) => "KES " + Number(n || 0).toLocaleString();
+
+    const session = await guard("expenses");
+    currentUser = session.user;
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "../index.html";
+    });
+    document.getElementById("menuToggle").addEventListener("click", () => {
+      document.getElementById("sidebar").classList.toggle("open");
+    });
+    document.querySelectorAll("[data-close]").forEach((el) => {
+      el.addEventListener("click", () => {
+        document.getElementById(el.dataset.close).style.display = "none";
+      });
+    });
+
+    async function refresh() {
+      const [eSnap, aSnap] = await Promise.all([
+        getDocs(query(collection(db, "expenses"), orderBy("createdAt", "desc"))),
+        getDocs(query(collection(db, "accounts"), orderBy("name")))
+      ]);
+      expenses = eSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      accounts = aSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      render();
+    }
+
+    function render() {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      let today = 0, month = 0, year = 0;
+      expenses.forEach((ex) => {
+        if (!ex.createdAt) return;
+        const d = ex.createdAt.toDate();
+        const amount = Number(ex.amount || 0);
+        if (d >= todayStart) today += amount;
+        if (d >= monthStart) month += amount;
+        if (d >= yearStart) year += amount;
+      });
+      document.getElementById("todayTotal").textContent = money(today);
+      document.getElementById("monthTotal").textContent = money(month);
+      document.getElementById("yearTotal").textContent = money(year);
+
+      const term = document.getElementById("searchInput").value.toLowerCase();
+      const list = expenses.filter((ex) =>
+        (ex.category || "").toLowerCase().includes(term) ||
+        (ex.note || "").toLowerCase().includes(term) ||
+        (ex.accountName || "").toLowerCase().includes(term)
+      );
+      const body = document.getElementById("expensesBody");
+      body.innerHTML = "";
+      document.getElementById("noExpenses").style.display = list.length ? "none" : "block";
+      list.forEach((ex) => {
+        const date = ex.createdAt ? ex.createdAt.toDate().toLocaleString() : "-";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td>${ex.category}</td>
+          <td><strong>${money(ex.amount)}</strong></td>
+          <td>${ex.accountName}</td>
+          <td>${ex.note || "-"}</td>
+          <td>${ex.userEmail || "-"}</td>
+          <td>
+            <button class="btn-edit" data-edit="${ex.id}">Edit</button>
+            <button class="btn-delete" data-del="${ex.id}">Delete</button>
+          </td>`;
+        body.appendChild(tr);
+      });
+      body.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => editExpense(b.dataset.edit)));
+      body.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => deleteExpense(b.dataset.del)));
+    }
+
+    document.getElementById("searchInput").addEventListener("input", render);
+
+    function fillAccounts(selected) {
+      const select = document.getElementById("accountName");
+      if (!accounts.length) {
+        select.innerHTML = `<option value="">Open Cash & Bank first</option>`;
+        return;
+      }
+      select.innerHTML = accounts.map((a) => `<option value="${a.name}">${a.name}</option>`).join("");
+      if (selected) select.value = selected;
+    }
+
+    document.getElementById("addBtn").addEventListener("click", () => {
+      editingId = null;
+      document.getElementById("modalTitle").textContent = "Add expense";
+      document.getElementById("expenseForm").reset();
+      fillAccounts();
+      document.getElementById("expenseModal").style.display = "flex";
+    });
+
+    function editExpense(id) {
+      const ex = expenses.find((x) => x.id === id);
+      if (!ex) return;
+      editingId = id;
+      document.getElementById("modalTitle").textContent = "Edit expense";
+      document.getElementById("category").value = ex.category || "Other";
+      document.getElementById("amount").value = ex.amount || "";
+      document.getElementById("note").value = ex.note || "";
+      fillAccounts(ex.accountName);
+      document.getElementById("expenseModal").style.display = "flex";
+    }
+
+    document.getElementById("expenseForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!accounts.length) return alert("Create Cash, Till, or Bank first.");
+      const data = {
+        category: document.getElementById("category").value,
+        amount: Number(document.getElementById("amount").value),
+        accountName: document.getElementById("accountName").value,
+        note: document.getElementById("note").value.trim() || null,
+        updatedAt: serverTimestamp()
+      };
+      if (editingId) {
+        await updateDoc(doc(db, "expenses", editingId), data);
+      } else {
+        data.userEmail = currentUser.email;
+        data.createdAt = serverTimestamp();
+        await addDoc(collection(db, "expenses"), data);
+      }
+      document.getElementById("expenseModal").style.display = "none";
+      await refresh();
+    });
+
+    async function deleteExpense(id) {
+      if (!confirm("Delete this expense? The money returns to that account.")) return;
+      await deleteDoc(doc(db, "expenses", id));
+      await refresh();
+    }
+
+    await refresh();
+  </script>
+</body>
+</html>

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales | Didge Sports Stock Pro</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Didge Sports</h2>
+      <p>Stock Pro</p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" data-page="dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+      <a href="products.html" data-page="products" class="nav-item"><span>📦</span> Products</a>
+      <a href="import.html" data-page="import" class="nav-item"><span>📥</span> Import</a>
+      <a href="stock.html" data-page="stock" class="nav-item"><span>🔄</span> Stock</a>
+      <a href="sales.html" data-page="sales" class="nav-item active"><span>🛒</span> Sales</a>
+      <a href="suppliers.html" data-page="suppliers" class="nav-item"><span>🚚</span> Suppliers</a>
+      <a href="cash.html" data-page="cash" class="nav-item"><span>💰</span> Cash & Bank</a>
+      <a href="expenses.html" data-page="expenses" class="nav-item"><span>📉</span> Expenses</a>
+      <a href="staff.html" data-page="staff" class="nav-item"><span>👤</span> Staff</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button id="logoutBtn" class="btn-logout">Logout</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div>
+        <h1>Sales</h1>
+        <p id="welcomeRole" style="font-size:13px; color:#666;"></p>
+      </div>
+      <div class="user-info">
+        <span id="userEmail">Loading...</span>
+      </div>
+    </header>
+
+    <section class="page-content">
+      <div class="table-card" style="padding:20px; margin-bottom:16px;">
+        <label for="barcodeInput" style="display:block; font-weight:600; margin-bottom:8px;">Scan barcode</label>
+        <input type="text" id="barcodeInput" autocomplete="off" placeholder="Click here, then scan. The scanner types the code and presses Enter." style="width:100%; padding:14px 16px; font-size:18px; border:2px solid #1e3c72; border-radius:8px;">
+        <p id="scanHint" style="margin-top:8px; color:#666; font-size:14px;">Scan the same code again to add one more.</p>
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn-primary" id="newSaleBtn">+ New Sale</button>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search sales...">
+        </div>
+      </div>
+
+      <div class="table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Variant</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Total</th>
+              <th>Payment</th>
+              <th>Sold By</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="salesBody"></tbody>
+        </table>
+        <p id="noSales" class="empty-state" style="display:none;">No sales recorded yet.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="saleModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>New Sale</h2>
+        <button class="close-btn" id="closeModal">&times;</button>
+      </div>
+
+      <form id="saleForm">
+        <div class="form-group">
+          <label>Scan barcode</label>
+          <input type="text" id="modalBarcode" autocomplete="off" placeholder="Or scan here">
+        </div>
+
+        <div class="form-group">
+          <label>Product *</label>
+          <select id="productSelect" required>
+            <option value="">Select Product</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="variantGroup" style="display:none;">
+          <label>Size / Variant *</label>
+          <select id="variantSelect">
+            <option value="">Select Size</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Quantity *</label>
+            <input type="number" id="quantity" min="1" value="1" required>
+          </div>
+          <div class="form-group">
+            <label>Unit Price (KES) *</label>
+            <input type="number" id="unitPrice" min="0" step="0.01" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Total Amount</label>
+          <input type="text" id="totalAmount" readonly style="background:#f5f5f5; font-weight:600;">
+        </div>
+
+        <div class="form-group">
+          <label>Payment Method *</label>
+          <select id="paymentMethod" required>
+            <option value="">Select Method</option>
+            <option value="Cash">Cash</option>
+            <option value="Till">Till</option>
+            <option value="Bank">Bank</option>
+            <option value="Mixed">Mixed</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Customer Name (optional)</label>
+          <input type="text" id="customerName" placeholder="Walk-in customer">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn-primary">Complete Sale</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from '../js/firebase-config.js';
+    import { signOut } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+    import {
+      collection, getDocs, addDoc, doc, updateDoc, deleteDoc,
+      query, orderBy, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+    import { guard } from "../js/roles.js";
+
+    let currentUser = null;
+    let allProducts = [];
+    let canDelete = false;
+
+    const session = await guard("sales");
+    currentUser = session.user;
+    canDelete = session.profile.role === "admin";
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = "../index.html";
+    });
+
+    document.getElementById('menuToggle').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    const modal = document.getElementById('saleModal');
+    const barcodeInput = document.getElementById('barcodeInput');
+
+    function focusScan() {
+      barcodeInput.value = "";
+      barcodeInput.focus();
+    }
+
+    document.getElementById('newSaleBtn').addEventListener('click', () => {
+      document.getElementById('saleForm').reset();
+      document.getElementById('variantGroup').style.display = "none";
+      document.getElementById('totalAmount').value = "";
+      modal.style.display = "flex";
+    });
+    document.getElementById('closeModal').addEventListener('click', () => {
+      modal.style.display = "none";
+      focusScan();
+    });
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      modal.style.display = "none";
+      focusScan();
+    });
+
+    async function loadProductsForSelect() {
+      const snapshot = await getDocs(query(collection(db, "products"), orderBy("name")));
+      allProducts = [];
+      const select = document.getElementById('productSelect');
+      select.innerHTML = `<option value="">Select Product</option>`;
+      snapshot.forEach(docSnap => {
+        const data = { id: docSnap.id, ...docSnap.data() };
+        allProducts.push(data);
+        select.innerHTML += `<option value="${data.id}">${data.name}</option>`;
+      });
+    }
+
+    function fillVariantOptions(product, selectedIndex) {
+      const variantGroup = document.getElementById('variantGroup');
+      const variantSelect = document.getElementById('variantSelect');
+      if (product && product.hasVariants && product.variants) {
+        variantGroup.style.display = "block";
+        variantSelect.innerHTML = `<option value="">Select Size</option>`;
+        product.variants.forEach((v, index) => {
+          variantSelect.innerHTML += `<option value="${index}">${v.size} (Stock: ${v.stock})</option>`;
+        });
+        if (selectedIndex !== null && selectedIndex !== undefined && selectedIndex !== "") {
+          variantSelect.value = String(selectedIndex);
+        }
+      } else {
+        variantGroup.style.display = "none";
+        variantSelect.innerHTML = `<option value="">Select Size</option>`;
+      }
+    }
+
+    document.getElementById('productSelect').addEventListener('change', (e) => {
+      const product = allProducts.find(p => p.id === e.target.value);
+      const unitPrice = document.getElementById('unitPrice');
+      fillVariantOptions(product, "");
+      if (product && product.hasVariants) {
+        unitPrice.value = "";
+      } else {
+        unitPrice.value = product ? (product.selling || 0) : "";
+        calculateTotal();
+      }
+    });
+
+    document.getElementById('variantSelect').addEventListener('change', (e) => {
+      const product = allProducts.find(p => p.id === document.getElementById('productSelect').value);
+      if (product && product.variants && e.target.value !== "") {
+        const v = product.variants[Number(e.target.value)];
+        document.getElementById('unitPrice').value = v ? (v.selling || 0) : "";
+        calculateTotal();
+      }
+    });
+
+    function calculateTotal() {
+      const qty = Number(document.getElementById('quantity').value) || 0;
+      const price = Number(document.getElementById('unitPrice').value) || 0;
+      document.getElementById('totalAmount').value = "KES " + (qty * price).toLocaleString();
+    }
+
+    document.getElementById('quantity').addEventListener('input', calculateTotal);
+    document.getElementById('unitPrice').addEventListener('input', calculateTotal);
+
+    function findByBarcode(code) {
+      const needle = code.trim().toLowerCase();
+      if (!needle) return null;
+      for (const product of allProducts) {
+        if (!product.hasVariants && String(product.barcode || "").toLowerCase() === needle) {
+          return { product, variantIndex: null };
+        }
+        if (product.variants) {
+          const variantIndex = product.variants.findIndex((v) => String(v.barcode || "").toLowerCase() === needle);
+          if (variantIndex !== -1) return { product, variantIndex };
+        }
+      }
+      return null;
+    }
+
+    function stockOf(product, variantIndex) {
+      if (variantIndex === null) return product.stock || 0;
+      return product.variants[variantIndex].stock || 0;
+    }
+
+    function labelOf(product, variantIndex) {
+      if (variantIndex === null) return product.name;
+      return product.name + " (" + product.variants[variantIndex].size + ")";
+    }
+
+    function sameSelection(product, variantIndex) {
+      if (modal.style.display !== "flex") return false;
+      if (document.getElementById('productSelect').value !== product.id) return false;
+      if (variantIndex === null) return true;
+      return document.getElementById('variantSelect').value === String(variantIndex);
+    }
+
+    function handleScan(raw) {
+      const code = String(raw || "").trim();
+      barcodeInput.value = "";
+      document.getElementById('modalBarcode').value = "";
+      if (!code) return;
+
+      const found = findByBarcode(code);
+      if (!found) {
+        document.getElementById('scanHint').textContent = "No product uses barcode " + code + ".";
+        alert("No product uses barcode " + code + ".");
+        focusScan();
+        return;
+      }
+
+      const { product, variantIndex } = found;
+      const available = stockOf(product, variantIndex);
+      const name = labelOf(product, variantIndex);
+      if (available <= 0) {
+        document.getElementById('scanHint').textContent = name + " is out of stock.";
+        alert(name + " is out of stock.");
+        focusScan();
+        return;
+      }
+
+      if (sameSelection(product, variantIndex)) {
+        const next = (Number(document.getElementById('quantity').value) || 0) + 1;
+        if (next > available) {
+          alert("Only " + available + " in stock.");
+          return;
+        }
+        document.getElementById('quantity').value = next;
+        calculateTotal();
+        document.getElementById('scanHint').textContent = name + " × " + next;
+        document.getElementById('paymentMethod').focus();
+        return;
+      }
+
+      if (modal.style.display !== "flex") {
+        document.getElementById('saleForm').reset();
+        modal.style.display = "flex";
+      }
+      document.getElementById('productSelect').value = product.id;
+      fillVariantOptions(product, variantIndex === null ? "" : variantIndex);
+      const price = variantIndex === null
+        ? (product.selling || 0)
+        : (product.variants[variantIndex].selling || 0);
+      document.getElementById('unitPrice').value = price;
+      document.getElementById('quantity').value = 1;
+      calculateTotal();
+      document.getElementById('scanHint').textContent = name + " ready. Choose how they paid.";
+      document.getElementById('paymentMethod').focus();
+    }
+
+    barcodeInput.addEventListener('keydown', (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      handleScan(barcodeInput.value);
+    });
+    document.getElementById('modalBarcode').addEventListener('keydown', (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      handleScan(e.target.value);
+    });
+
+    document.getElementById('saleForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const productId = document.getElementById('productSelect').value;
+      const product = allProducts.find(p => p.id === productId);
+      if (!product) return alert("Select a product");
+
+      const qty = Number(document.getElementById('quantity').value);
+      const unitPrice = Number(document.getElementById('unitPrice').value);
+      const total = qty * unitPrice;
+      const paymentMethod = document.getElementById('paymentMethod').value;
+      const customerName = document.getElementById('customerName').value.trim() || "Walk-in";
+      const variantIndex = document.getElementById('variantSelect').value;
+
+      if (product.hasVariants) {
+        const v = product.variants[Number(variantIndex)];
+        if (!v || v.stock < qty) return alert(`Not enough stock. Available: ${v ? v.stock : 0}`);
+      } else if ((product.stock || 0) < qty) {
+        return alert(`Not enough stock. Available: ${product.stock || 0}`);
+      }
+
+      try {
+        if (product.hasVariants) {
+          const variants = product.variants.map((v) => ({ ...v }));
+          const idx = Number(variantIndex);
+          variants[idx].stock -= qty;
+          const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+          await updateDoc(doc(db, "products", productId), { variants, totalStock, updatedAt: serverTimestamp() });
+        } else {
+          await updateDoc(doc(db, "products", productId), {
+            stock: (product.stock || 0) - qty,
+            totalStock: (product.stock || 0) - qty,
+            updatedAt: serverTimestamp()
+          });
+        }
+
+        await addDoc(collection(db, "sales"), {
+          productId,
+          productName: product.name,
+          variant: product.hasVariants ? product.variants[Number(variantIndex)].size : null,
+          quantity: qty,
+          unitPrice,
+          total,
+          paymentMethod,
+          customerName,
+          userEmail: currentUser.email,
+          createdAt: serverTimestamp()
+        });
+
+        await addDoc(collection(db, "stock_movements"), {
+          type: "out",
+          productId,
+          productName: product.name,
+          variant: product.hasVariants ? product.variants[Number(variantIndex)].size : null,
+          quantity: qty,
+          reason: `Sale to ${customerName}`,
+          userEmail: currentUser.email,
+          createdAt: serverTimestamp()
+        });
+
+        modal.style.display = "none";
+        document.getElementById('scanHint').textContent = "Sale saved. Ready for the next scan.";
+        loadSales();
+        await loadProductsForSelect();
+        focusScan();
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
+    });
+
+    async function loadSales() {
+      const tbody = document.getElementById('salesBody');
+      const noSales = document.getElementById('noSales');
+      tbody.innerHTML = "";
+
+      const q = query(collection(db, "sales"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        noSales.style.display = "block";
+        return;
+      }
+      noSales.style.display = "none";
+
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        const date = data.createdAt ? data.createdAt.toDate().toLocaleString() : "-";
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${date}</td>
+          <td>${data.productName}</td>
+          <td>${data.variant || "-"}</td>
+          <td>${data.quantity}</td>
+          <td>KES ${Number(data.unitPrice || 0).toLocaleString()}</td>
+          <td><strong>KES ${Number(data.total || 0).toLocaleString()}</strong></td>
+          <td>${data.paymentMethod}</td>
+          <td>${data.userEmail}</td>
+          <td>${canDelete ? `<button class="btn-delete" data-id="${id}">Delete</button>` : "-"}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', () => deleteSale(btn.dataset.id));
+      });
+    }
+
+    async function deleteSale(saleId) {
+      if (!canDelete) return;
+      if (!confirm("Are you sure you want to delete this sale?\nStock will be returned.")) return;
+
+      try {
+        const salesSnap = await getDocs(collection(db, "sales"));
+        let sale = null;
+        salesSnap.forEach(docSnap => {
+          if (docSnap.id === saleId) sale = { id: docSnap.id, ...docSnap.data() };
+        });
+        if (!sale) return;
+
+        const productSnap = await getDocs(collection(db, "products"));
+        let product = null;
+        productSnap.forEach(docSnap => {
+          if (docSnap.id === sale.productId) product = { id: docSnap.id, ...docSnap.data() };
+        });
+
+        if (product) {
+          if (product.hasVariants && sale.variant) {
+            const variants = product.variants.map((v) => ({ ...v }));
+            const idx = variants.findIndex(v => v.size === sale.variant);
+            if (idx !== -1) {
+              variants[idx].stock += sale.quantity;
+              const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+              await updateDoc(doc(db, "products", product.id), { variants, totalStock });
+            }
+          } else {
+            await updateDoc(doc(db, "products", product.id), {
+              stock: (product.stock || 0) + sale.quantity,
+              totalStock: (product.stock || 0) + sale.quantity
+            });
+          }
+        }
+
+        await deleteDoc(doc(db, "sales", saleId));
+        loadSales();
+        await loadProductsForSelect();
+        alert("Sale deleted and stock restored.");
+      } catch (error) {
+        alert("Error deleting sale: " + error.message);
+      }
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      document.querySelectorAll('#salesBody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(term) ? "" : "none";
+      });
+    });
+
+    loadSales();
+    await loadProductsForSelect();
+    focusScan();
+  </script>
+
+</body>
+</html>
